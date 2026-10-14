@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/restaurant_map.html"
+      "destination": "/index.html"
     }
   ]
 }
