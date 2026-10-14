@@ -436,6 +436,20 @@ function setResultsPanelCollapsed(collapsed) {
   button.setAttribute("aria-expanded", collapsed ? "false" : "true");
 }
 
+function setMetricsSummaryCollapsed(collapsed) {
+  const card = document.getElementById("metricsCard");
+  const button = document.getElementById("toggleMetricsButton");
+  if (!card || !button) return;
+  const isCollapsed = Boolean(collapsed);
+  card.classList.toggle("collapsed", isCollapsed);
+  button.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+  button.setAttribute(
+    "aria-label",
+    `${isCollapsed ? "Expand" : "Collapse"} nearby food metrics`,
+  );
+  button.textContent = isCollapsed ? "Expand" : "Collapse";
+}
+
 function collapseMapOverlaysForPopup() {
   setLegendCollapsed(true);
   if (isMobileViewport() && !preserveResultsPanelForPopup) {
@@ -1511,11 +1525,9 @@ function setAnalysisPanelsVisible(visible) {
 }
 
 function toggleMetricsSummary() {
-  const collapsed = document.getElementById("metricsCard").classList.toggle("collapsed");
-  const button = document.getElementById("toggleMetricsButton");
-  button.setAttribute("aria-expanded", String(!collapsed));
-  button.setAttribute("aria-label", `${collapsed ? "Expand" : "Collapse"} nearby food metrics`);
-  button.textContent = collapsed ? "Expand" : "Collapse";
+  const card = document.getElementById("metricsCard");
+  if (!card) return;
+  setMetricsSummaryCollapsed(!card.classList.contains("collapsed"));
 }
 
 function clearAnalysisSelection() {
@@ -1586,6 +1598,7 @@ function setAnalysisPoint(lat, lon, label) {
     return;
   }
   currentAnalysisPoint = { lat, lon, label };
+  setMetricsSummaryCollapsed(true);
   if (view) {
     view
       .goTo({
