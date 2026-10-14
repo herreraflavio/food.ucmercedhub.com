@@ -1687,6 +1687,16 @@ a {
   color: #1f6feb;
 }
 
+/* Keep touch browsers from zooming the page when a form control gets focus. */
+@media (max-width: 720px), (pointer: coarse) {
+  input[type="text"],
+  input[type="number"],
+  select,
+  .compact-filter-heading select {
+    font-size: 16px;
+  }
+}
+
 @media (max-width: 720px) {
   :root {
     --hub-nav-height: 32px;

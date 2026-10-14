@@ -377,12 +377,8 @@ function bindLegendEvents() {
     button.addEventListener("click", () => toggleLegend());
   }
 
-  // On narrow screens, start with the map overlays collapsed to keep the map usable on first load.
-  if (
-    window.matchMedia &&
-    window.matchMedia("(max-width: 720px)").matches
-  ) {
-    setLegendCollapsed(true);
+  setLegendCollapsed(true);
+  if (isMobileViewport()) {
     setResultsPanelCollapsed(true);
   }
 
@@ -739,11 +735,6 @@ async function loadRestaurantJson() {
     setStatus(
       `Loaded ${restaurants.length} mappable locations from restaurant_data.json.\nSearch for a restaurant or use the pin tool to calculate a score. When drop-pin mode is active, a pin follows your mouse.`,
     );
-    if (restaurants.length > 0 && restaurantLayer.graphics.length > 0) {
-      view.goTo(restaurantLayer.graphics.toArray()).catch((error) => {
-        if (error.name !== "AbortError") console.error(error);
-      });
-    }
   } catch (error) {
     console.error(error);
     setStatus(
