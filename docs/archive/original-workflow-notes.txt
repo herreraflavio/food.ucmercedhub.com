@@ -1,0 +1,36 @@
+Data sources:
+
+Source 1) Merced county facility food inspection ratings
+  https://apps.co.merced.ca.us/publicapplets/pages/foodinspect/FoodInspect.aspx
+
+Source 2) Google maps places api for google star review and price range
+
+prerequisites:
+
+- scraped source 1 and put into csv file named food_inspection_table.csv
+
+Steps: 
+
+1) input csv file: food_inspection_table.csv 
+   used python script using pandas to clean data
+   removed locations not in merced city and dropped details column (can also be done in arcgis pro)
+
+   output csv file: output.csv
+
+2) use arcgis pro to geocode Address
+
+   export result as table
+
+3) used python script to add new column and calculate values
+   add quality score, 0 Unsatisfactory, 1 Satisfactory, and 2 good (can also be done in arcgis pro)
+
+4) run join_google_restaurant_data to add google reviews and price ranges
+
+   output json file location_data.json
+
+5) built light web app using arcgis map sdk for javascript to load the json file containing the information of each location
+
+6) simple conversation of json to geojson, then published as web layer in arcgis pro
+
+chat conversations:
+https://chatgpt.com/c/6a502e29-15cc-83e8-84d6-0dbf7c68b34c

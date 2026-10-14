@@ -1,0 +1,27 @@
+# Local credentials
+.env
+.env.*
+!.env.example
+secrets/
+key.txt
+
+# Python and local tooling
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.tmp/
+node_modules/
+
+# Incomplete generated files
+*.part
+*.tmp
+
+# ArcGIS working projects and locks; CSV handoff tables are retained.
+*.aprx
+*.gdb/
+*.lock
+
+# OS files
+.DS_Store
+Thumbs.db

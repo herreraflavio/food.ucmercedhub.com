@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>UC Merced Food Desert Map | UC Merced Hub</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Interactive UC Merced food desert map showing restaurant access, inspection quality, Google ratings, price ranges, and distance-based food-access risk scoring near campus."
+    />
+    <meta
+      name="keywords"
+      content="UC Merced, UC Merced Hub, food desert map, food access, campus map, Merced restaurants"
+    />
+    <meta name="author" content="UC Merced Hub" />
+    <meta name="theme-color" content="#005487" />
+
+    <link rel="icon" href="./assets/images/favicon.ico" sizes="any" />
+    <link rel="shortcut icon" href="./assets/images/favicon.ico" />
+    <link rel="apple-touch-icon" href="./assets/images/logo.png" />
+
+    <meta
+      property="og:title"
+      content="UC Merced Food Desert Map | UC Merced Hub"
+    />
+    <meta
+      property="og:description"
+      content="Explore food access around UC Merced with nearby restaurant search, quality filters, and a distance-based food desert risk score."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.ucmercedhub.com/" />
+    <meta property="og:image" content="./assets/images/logo.png" />
+
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="UC Merced Food Desert Map | UC Merced Hub"
+    />
+    <meta
+      name="twitter:description"
+      content="Interactive UC Merced food access and food desert risk map powered by UC Merced Hub."
+    />
+    <meta name="twitter:image" content="./assets/images/logo.png" />
+
+    <!-- ArcGIS Maps SDK for JavaScript 4.x AMD CDN. No ArcGIS API key used. -->
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.34/esri/themes/light/main.css"
+    />
+    <script src="https://js.arcgis.com/4.34/"></script>
+
+    <link rel="stylesheet" href="./assets/css/restaurant_map.css" />
+    <!-- Privacy-friendly analytics by Plausible -->
+    <script
+      async
+      src="https://plausible.io/js/pa-4O1jnkC4vGQpMFu1jeqIx.js"
+    ></script>
+
+  </head>
+
+  <body>
+    <header class="hub-nav" aria-label="UC Merced Hub navigation">
+      <a
+        class="hub-brand"
+        href="https://www.ucmercedhub.com/"
+        aria-label="Back to UC Merced Hub home"
+      >
+        <img class="hub-logo-mark" src="./assets/images/logo.png" alt="" aria-hidden="true" />
+        <span class="hub-brand-text">
+          <span class="hub-brand-title">UC Merced Hub</span>
+        </span>
+      </a>
+      <nav class="hub-nav-actions" aria-label="Hub links">
+        <a class="hub-home-link" href="https://www.ucmercedhub.com/">
+          <span>Main site</span>
+        </a>
+      </nav>
+    </header>
+
+    <div id="viewDiv"></div>
+
+    <div class="top-ui">
+      <div class="toolbar">
+        <div class="search-input-wrap">
+          <input
+            id="restaurantSearchInput"
+            type="text"
+            placeholder="Search or select and drop pin to locate restaurants"
+            autocomplete="off"
+          />
+          <div
+            id="searchSuggestionResults"
+            class="search-suggestions"
+            aria-live="polite"
+            hidden
+          ></div>
+        </div>
+        <button id="searchButton" title="Search loaded restaurant data">
+          Search
+        </button>
+        <button id="pinButton" class="ghost icon" title="Drop pin mode">
+          📍
+        </button>
+        <button
+          id="removeSelectionButton"
+          class="danger"
+          title="Clear search, selection, and result details"
+        >
+          Clear
+        </button>
+      </div>
+
+      <div id="scoreCard" class="compact-card risk-score-card" hidden>
+        <div class="score-line">
+          <div>
+            <div class="muted risk-card-kicker">
+              Food Desert Risk Index
+              <button
+                type="button"
+                class="benchmark-info-button risk-info-button"
+                title="This score uses the active filters to classify nearby food locations, then calculates one distance-decay qualified-access score. Full matches count as 1.0, partial matches count as 0.5, and farther locations count less using a smooth distance-decay kernel. Food desert risk is 100 minus qualified access."
+                aria-label="Food Desert Risk Index information"
+              >
+                i
+              </button>
+            </div>
+            <div class="risk-number-row">
+              <span id="riskNumber" class="score-number">—</span>
+              <span class="score-denominator">/100</span>
+            </div>
+          </div>
+          <div id="riskLabel" class="score-label">Select a location</div>
+        </div>
+        <div id="scoreMeta" class="score-meta">
+          Search for a restaurant or use the pin tool.
+        </div>
+        <div id="riskMethodMeta" class="risk-method-meta">
+          One score: distance-decay qualified access. Filters decide which
+          locations qualify; distance decides how much each one counts.
+        </div>
+      </div>
+
+      <section id="metricsCard" class="compact-card metrics-summary-card" hidden aria-labelledby="metricsSummaryTitle">
+        <div class="metrics-summary-header">
+          <div>
+            <h2 id="metricsSummaryTitle" class="metrics-summary-title">Nearby food metrics</h2>
+            <div id="metricsSummaryMeta" class="muted metrics-summary-meta"></div>
+          </div>
+          <button
+            id="toggleMetricsButton"
+            type="button"
+            class="ghost"
+            aria-expanded="true"
+            aria-controls="metricsSummaryBody"
+            aria-label="Collapse nearby food metrics"
+          >
+            Collapse
+          </button>
+        </div>
+        <div id="metricsSummaryBody" class="metrics-summary-body">
+          <div id="metricDistributions" class="metric-distributions"></div>
+          <p class="metrics-summary-note">Bars show location counts; darker bars mark the most common buckets. Averages exclude unavailable values.</p>
+        </div>
+      </section>
+
+      <div id="resultsPanel" class="results-panel" hidden>
+        <div class="results-header">
+          <div class="results-header-top">
+            <div class="results-title">Results</div>
+            <div class="results-header-actions">
+              <button
+                id="settingsButton"
+                class="ghost filter-toggle-button"
+                title="Show or hide filters"
+                aria-expanded="true"
+              >
+                <span class="filter-glyph" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z"></path>
+                  </svg>
+                </span>
+                Filters
+              </button>
+              <button
+                id="toggleResultsButton"
+                class="ghost"
+                title="Collapse or expand the results panel"
+              >
+                Collapse
+              </button>
+            </div>
+          </div>
+          <div id="resultsSubtitle" class="muted results-subtitle">
+            Search for a location to place the analysis pin, or drop a pin
+            manually.
+          </div>
+        </div>
+
+        <div class="results-panel-body">
+          <div id="settingsDrawer" class="filter-panel visible">
+            <div class="filter-panel-header">
+              <div>
+                <div class="filter-panel-title">Filters</div>
+                <div id="activeRangeSummaryInline" class="filter-summary-text">
+                  Radius 1 mi · Stars 3.0–4.5 · Inspection 1 Satisfactory–2 Good
+                  · Price $0–9–$20+
+                </div>
+              </div>
+              <button id="closeSettingsButton" class="ghost filter-hide-button">
+                Hide
+              </button>
+            </div>
+
+            <div class="filter-controls-grid">
+              <div class="filter-control filter-control-full">
+                <label for="radiusMiles">
+                  Radius
+                  <span id="radiusMilesValue" class="range-value-pill"
+                    >1 mi</span
+                  >
+                </label>
+                <input
+                  id="radiusMiles"
+                  type="range"
+                  min="0.25"
+                  max="2"
+                  step="0.25"
+                  value="1"
+                />
+              </div>
+            </div>
+
+            <div class="filter-heading compact-filter-heading">
+              <h3>Rating</h3>
+              <select id="ratingMode" title="Rating filter mode">
+                <option value="range" selected>Range</option>
+                <option value="exact">Exact match</option>
+              </select>
+            </div>
+            <div class="one-track-slider compact-slider" id="ratingSlider">
+              <div class="slider-readout">
+                <span id="ratingLeftReadout">3.0★</span>
+                <span id="ratingRightReadout">4.5★</span>
+              </div>
+              <div class="slider-shell">
+                <div class="slider-track"></div>
+                <div class="slider-fill" id="ratingSliderFill"></div>
+                <input
+                  id="ratingMin"
+                  class="range-input range-min"
+                  type="range"
+                  min="0"
+                  max="5"
+                  step="0.5"
+                  value="3"
+                />
+                <input
+                  id="ratingMax"
+                  class="range-input range-max"
+                  type="range"
+                  min="0"
+                  max="5"
+                  step="0.5"
+                  value="4.5"
+                />
+              </div>
+              <div class="slider-ticks">
+                <span>0★</span><span>1★</span><span>2★</span><span>3★</span
+                ><span>4★</span><span>5★</span>
+              </div>
+            </div>
+            <label class="check-row compact-check-row">
+              <input id="allowUnknownRating" type="checkbox" checked />
+              Unknown Google rating can count as partial
+            </label>
+
+            <div class="filter-heading compact-filter-heading">
+              <h3>Inspection</h3>
+              <select id="inspectionMode" title="Inspection filter mode">
+                <option value="range" selected>Range</option>
+                <option value="exact">Exact match</option>
+              </select>
+            </div>
+            <div class="one-track-slider compact-slider" id="inspectionSlider">
+              <div class="slider-readout">
+                <span id="inspectionLeftReadout">1 Satisfactory</span>
+                <span id="inspectionRightReadout">2 Good</span>
+              </div>
+              <div class="slider-shell">
+                <div class="slider-track"></div>
+                <div class="slider-fill" id="inspectionSliderFill"></div>
+                <input
+                  id="inspectionMin"
+                  class="range-input range-min"
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="1"
+                  value="1"
+                />
+                <input
+                  id="inspectionMax"
+                  class="range-input range-max"
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="1"
+                  value="2"
+                />
+              </div>
+              <div class="slider-ticks">
+                <span>0<br />Unsat.</span><span>1<br />Sat.</span
+                ><span>2<br />Good</span>
+              </div>
+            </div>
+
+            <div class="filter-heading compact-filter-heading">
+              <h3>Price</h3>
+              <select id="priceMode" title="Price filter mode">
+                <option value="range" selected>Range</option>
+                <option value="exact">Exact match</option>
+              </select>
+            </div>
+            <div class="one-track-slider compact-slider" id="priceSlider">
+              <div class="slider-readout">
+                <span id="priceLeftReadout">$0–9</span>
+                <span id="priceRightReadout">$20+</span>
+              </div>
+              <div class="slider-shell">
+                <div class="slider-track"></div>
+                <div class="slider-fill" id="priceSliderFill"></div>
+                <input
+                  id="priceMin"
+                  class="range-input range-min"
+                  type="range"
+                  min="0"
+                  max="20"
+                  step="10"
+                  value="0"
+                />
+                <input
+                  id="priceMax"
+                  class="range-input range-max"
+                  type="range"
+                  min="0"
+                  max="20"
+                  step="10"
+                  value="20"
+                />
+              </div>
+              <div class="slider-ticks">
+                <span>$0–9</span><span>$10–19</span><span>$20+</span>
+              </div>
+            </div>
+            <label class="check-row compact-check-row">
+              <input id="allowUnknownPrice" type="checkbox" checked />
+              Unknown price can count as partial
+            </label>
+
+            <div class="filter-note">
+              Filters only classify result cards: purple = full match, orange =
+              allowed unknown partial match.
+            </div>
+          </div>
+
+          <div id="status" class="status">Initializing...</div>
+
+          <div class="results-section location-search-section">
+            <h3 class="results-section-title location-search-title">
+              <span>location search matches:</span>
+              <span id="locationMatchCount" class="location-match-count"
+                >0 selected</span
+              >
+            </h3>
+
+            <div class="filter-results-summary compact-filter-results-summary">
+              <div class="info-metrics">
+                <div class="metric">Nearby <b id="nearbyCount">—</b></div>
+                <div class="metric">
+                  Matches <b id="benchmarkMatchCount">—</b>
+                </div>
+                <div class="metric">
+                  Inspection <b id="inspectionScore">—</b>
+                </div>
+                <div class="metric">Price <b id="avgPrice">—</b></div>
+                <div class="metric">Google <b id="avgRating">—</b></div>
+              </div>
+            </div>
+
+            <div
+              id="restaurantSearchResults"
+              class="search-results"
+              aria-live="polite"
+            >
+              <div class="search-empty">
+                Choose a location or drop a pin to show filtered results.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="legacyInfoDrawer" class="drawer" hidden>
+        <h2>Info</h2>
+        <div id="legacyStatus" class="status">Initializing...</div>
+
+        <h3>Latest analysis</h3>
+        <div class="info-metrics">
+          <div class="metric">
+            Nearby locations <b id="legacyNearbyCount">—</b>
+          </div>
+          <div class="metric">
+            Range matches <b id="legacyBenchmarkMatchCount">—</b>
+          </div>
+          <div class="metric">Access score <b id="legacyAccessScore">—</b></div>
+          <div class="metric">
+            Avg. inspection <b id="legacyInspectionScore">—</b>
+          </div>
+          <div class="metric">Avg. price <b id="legacyAvgPrice">—</b></div>
+          <div class="metric">
+            Avg. Google rating <b id="legacyAvgRating">—</b>
+          </div>
+          <div class="metric">
+            Qualified option share <b id="legacyWeightedCount">—</b>
+          </div>
+          <div class="metric">
+            Distance-weighted access <b id="legacyAvgProfileDiff">—</b>
+          </div>
+        </div>
+
+        <h3>Nearest locations in radius</h3>
+        <div id="legacyNearbyList" class="nearby-list muted"></div>
+
+        <h3>Legend</h3>
+        <div class="legend">
+          <div class="legend-row">
+            <span class="dot good"></span><span>quality_score 2 = Good</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot satisfactory"></span
+            ><span>quality_score 1 = Satisfactory</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot unknown"></span
+            ><span>quality_score 0 = Unsatisfactory / missing</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot nearby"></span
+            ><span
+              >Solid green/yellow/red = inside radius but not a full range
+              match</span
+            >
+          </div>
+          <div class="legend-row">
+            <span class="dot match"></span
+            ><span>Purple solid circle = full range match</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot partial-match"></span
+            ><span
+              >Partial unknown match = solid orange, listed with
+              disclaimer</span
+            >
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="muted">
+          This is a custom food-access score, not an official USDA food desert
+          classification. Higher risk means fewer benchmark-matching food
+          locations near the selected point. Range filters control the scoring
+          model directly. Full matches satisfy every selected range and appear
+          solid purple. Partial matches satisfy all known ranges but have an
+          allowed unknown value, usually missing price or Google rating; they
+          appear solid orange and are flagged in the list.
+        </div>
+
+        <div class="close-row">
+          <button id="legacyCloseInfoButton" class="secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="legendCard" class="legend-card">
+      <div class="legend-header">
+        <button
+          id="legendToggleButton"
+          class="legend-toggle"
+          type="button"
+          aria-expanded="true"
+          aria-label="Collapse legend"
+          title="Collapse legend"
+        >
+          <span class="legend-title">Legend</span>
+          <span class="legend-chevron" aria-hidden="true"></span>
+        </button>
+      </div>
+      <div id="legendBody" class="legend-body">
+        <div class="legend">
+          <div class="legend-row">
+            <span class="dot good"></span><span>quality_score 2 = Good</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot satisfactory"></span
+            ><span>quality_score 1 = Satisfactory</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot unknown"></span
+            ><span>quality_score 0 = Unsatisfactory / missing</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot nearby"></span
+            ><span
+              >Solid green/yellow/red = inside radius, not a full match</span
+            >
+          </div>
+          <div class="legend-row">
+            <span class="dot match"></span
+            ><span>Purple solid circle = full range match</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot partial-match"></span
+            ><span
+              >Solid orange = partial match with an allowed unknown value</span
+            >
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="muted">
+          Food metrics summarize all locations within the selected radius.
+          Filters determine which locations are full or partial matches in the
+          result list.
+        </div>
+      </div>
+    </div>
+
+    <script src="./assets/js/restaurant_map.js"></script>
+  </body>
+</html>
